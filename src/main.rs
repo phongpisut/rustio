@@ -5,6 +5,8 @@ use socketioxide::{
     extract::{Data, SocketRef, State},
     SocketIo,
 };
+use tower_http::{cors::CorsLayer};
+
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tracing::info;
@@ -67,7 +69,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_state(io)
         .layer(
             ServiceBuilder::new()
-                .layer(layer),
+                .layer(CorsLayer::permissive()) 
+                .layer(layer)
         );
 
     info!("Starting server");
