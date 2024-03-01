@@ -19,9 +19,12 @@ impl MessageStore {
         let mut binding = self.messages.write().await;
         let messages = binding.entry(room.to_owned()).or_default();
         
-        
-        //update existing message by message.user
-        messages.retain(|x| x.user != message.user);
+        for msg in messages.iter_mut() {
+            if msg.user == message.user {
+                *msg = message; 
+                return;
+            }
+        }
         messages.push_front(message);
     }
 

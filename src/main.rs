@@ -30,7 +30,6 @@ async fn on_connect(socket: SocketRef ) {
         "move",
         |socket: SocketRef, Data::<String>(data) ,store: State<state::MessageStore>| async move {
             info!("Received event: {:?} ", data);
-            
             store.insert("1" , Message {
                 data: data,
                 user: socket.id.to_string(),
