@@ -12,20 +12,41 @@ use tower::ServiceBuilder;
 use tracing::info;
 use tracing_subscriber::FmtSubscriber;
 
-use crate::state::{Message, Toggle};
+use crate::state::Message;
 
 
 #[derive(serde::Serialize)]
 struct Messages {
     messages: Vec<state::Message>,
-    items: Toggle,
+    items: String,
 }
+
+#[derive(serde::Serialize)]
+struct MessagesMove {
+    messages: Vec<state::Message>
+}
+
+
+
 
 
 async fn on_connect(socket: SocketRef ) {
     info!("Socket.IO connected: {:?} {:?}", socket.ns(), socket.id);
     socket.join("1").ok();
     socket.within("1").emit("consume", format!("connect@{}", socket.id)).ok();
+
+    socket.on(
+        "join",
+        |socket: SocketRef, Data::<String>(data) ,store: State<state::MessageStore>| async move {
+            store.insert("1" , Message {
+                data: data,
+                user: socket.id.to_string(),
+            }).await;
+            let messages = store.get("1").await;
+            let items = store.get_items().await;
+            socket.within("1").emit("consume", Messages {messages , items}).ok();
+        },
+    );
 
     socket.on(
         "move",
@@ -35,8 +56,7 @@ async fn on_connect(socket: SocketRef ) {
                 user: socket.id.to_string(),
             }).await;
             let messages = store.get("1").await;
-            let items = store.get_items("1").await;
-            socket.within("1").emit("consume", Messages {messages , items}).ok();
+            socket.within("1").emit("consume", MessagesMove{messages}).ok();
         },
     );
 
@@ -44,15 +64,18 @@ async fn on_connect(socket: SocketRef ) {
         "emoji",
         |socket: SocketRef, Data::<String>(data)| async move {
             info!("Received event: {:?} ", data);
-            socket.within("1").emit("consume", format!("emoji@{}@{}", socket.id, data)).ok();
+            socket.within("1").emit("consumeState", format!("emoji@{}@{}", socket.id, data)).ok();
         },
     );
 
     socket.on(
         "setState",
         |socket: SocketRef, Data::<String>(data) , store: State<state::MessageStore>| async move {
-            store.set_items("1", Toggle { items: data.clone() }).await;
-            socket.within("1").emit("consume", format!("alert@{}@{}", socket.id, data)).ok();
+            if !data.contains("emoji@"){
+                store.set_items(data.clone()).await;
+                let items = store.get_items().await;
+                socket.within("1").emit("consumeState", items).ok();
+            }
 
         },
     );
