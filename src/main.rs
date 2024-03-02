@@ -64,7 +64,7 @@ async fn on_connect(socket: SocketRef ) {
         "emoji",
         |socket: SocketRef, Data::<String>(data)| async move {
             info!("Received event: {:?} ", data);
-            socket.within("1").emit("consumeState", format!("emoji@{}@{}", socket.id, data)).ok();
+            socket.within("1").emit("consumeState", format!("emoji@{}@{}", data, socket.id)).ok();
         },
     );
 
