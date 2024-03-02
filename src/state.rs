@@ -7,11 +7,24 @@ pub struct Message {
     pub user: String,
 }
 
+impl Default for Toggle {
+    fn default() -> Self {
+        Toggle { items: String::default() }
+    }
+}
+
+#[derive(serde::Serialize, Clone, Debug)]
+pub struct Toggle {
+    pub items: String,
+}
+
 pub type RoomStore = HashMap<String, VecDeque<Message>>;
+pub type ItemStore = HashMap<String, Toggle>;
 
 #[derive(Default)]
 pub struct MessageStore {
     pub messages: RwLock<RoomStore>,
+    pub items : RwLock<ItemStore>
 }
 
 impl MessageStore {
@@ -38,6 +51,17 @@ impl MessageStore {
     pub async fn get(&self, room: &str) -> Vec<Message> {
         let messages = self.messages.read().await.get(room).cloned();
         messages.unwrap_or_default().into_iter().rev().collect()
+    }
+
+    pub async fn get_items(&self, room: &str) -> Toggle {
+        let items = self.items.read().await.get(room).cloned();
+        items.unwrap_or_default()
+        
+    } 
+
+    pub async fn set_items(&self, room: &str, items: Toggle) {
+        let mut binding = self.items.write().await;
+        binding.insert(room.to_owned(), items);
     }
 
     
