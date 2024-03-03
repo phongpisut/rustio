@@ -53,6 +53,21 @@ impl MessageStore {
         messages.unwrap_or_default().into_iter().rev().collect()
     }
 
+    pub async fn get_name_by_id(&self, room: &str, user: String) -> String {
+        let messages = self.messages.read().await.get(room).cloned();
+
+        let string_data = messages.unwrap_or_default().into_iter()
+        .find(|x| x.user == user);        
+        let data = string_data.unwrap_or(Message {data: String::from(""), user: String::from("")}).data;
+        let return_value = data.split("@")
+        .collect::<Vec<&str>>()[0].to_string();
+        
+       
+        return_value
+
+        
+    }
+
     pub async fn get_items(&self) -> ItemStore {
         let items = self.items.read().await;
         items.clone()

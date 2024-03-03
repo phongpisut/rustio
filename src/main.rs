@@ -20,11 +20,15 @@ use crate::state::{Message, ItemStore, Items};
 struct Messages {
     messages: Vec<state::Message>,
     items: ItemStore,
+    description: Option<String>,
 }
 
 #[derive(serde::Serialize)]
 struct MessagesMove {
-    messages: Vec<state::Message>
+    messages: Vec<state::Message>,
+    description: Option<String>,
+    
+    
 }
 
 
@@ -46,7 +50,8 @@ async fn on_connect(socket: SocketRef ) {
             }).await;
             let messages = store.get("1").await;
             let items = store.get_items().await;
-            socket.within("1").emit("consume", Messages {messages , items}).ok();
+            let nickname = store.get_name_by_id("1", socket.id.to_string()).await;
+            socket.within("1").emit("consume", Messages {messages , items , description:Some(format!("join@{}", nickname))}).ok();
         },
     );
 
@@ -58,7 +63,7 @@ async fn on_connect(socket: SocketRef ) {
                 user: socket.id.to_string(),
             }).await;
             let messages = store.get("1").await;
-            socket.within("1").emit("consume", MessagesMove{messages}).ok();
+            socket.broadcast().emit("consume", MessagesMove{messages , description:None}).ok();
         },
     );
 
@@ -66,7 +71,7 @@ async fn on_connect(socket: SocketRef ) {
         "emoji",
         |socket: SocketRef, Data::<String>(data)| async move {
             info!("Received event: {:?} ", data);
-            socket.within("1").emit("consumeState", format!("emoji@{}@{}", data, socket.id)).ok();
+            socket.broadcast().emit("consumeState", format!("emoji@{}@{}", data, socket.id)).ok();
         },
     );
 
@@ -75,17 +80,17 @@ async fn on_connect(socket: SocketRef ) {
         |socket: SocketRef, Data::<HashMap<String, Items>>(data) , store: State<state::MessageStore>| async move {
                 store.set_items(data).await;
                 let items = store.get_items().await;
-                socket.within("1").emit("consumeState", items).ok();
+                socket.broadcast().emit("consumeState", items).ok();
             
 
         },
     );
 
-
-
     socket.on_disconnect(|socket: SocketRef , store: State<state::MessageStore>| async move{
+        let nickname = store.get_name_by_id("1", socket.id.to_string()).await;
         store.remove("1", socket.id.to_string()).await;
-        socket.broadcast().emit("consume", format!("exit@{}" , socket.id)).ok();
+        let messages = store.get("1").await;
+        socket.broadcast().emit("consume", MessagesMove{messages , description:Some(format!("disconnect@{}", nickname))}).ok();
     });
 
 }
