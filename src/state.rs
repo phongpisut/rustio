@@ -1,4 +1,6 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
+use std::collections::VecDeque;
+use serde::Deserialize;
 use tokio::sync::RwLock;
 
 #[derive(serde::Serialize, Clone, Debug)]
@@ -8,9 +10,16 @@ pub struct Message {
 }
 
 
+#[derive(serde::Serialize, Deserialize,Clone, Debug)]
+pub struct Items {
+    pub status: bool,
+    pub update_by: String,
+}
+
+
 
 pub type RoomStore = HashMap<String, VecDeque<Message>>;
-pub type ItemStore =  String;
+pub type ItemStore =  HashMap<String, Items>;
 
 #[derive(Default)]
 pub struct MessageStore {
@@ -44,15 +53,14 @@ impl MessageStore {
         messages.unwrap_or_default().into_iter().rev().collect()
     }
 
-    pub async fn get_items(&self) -> String {
+    pub async fn get_items(&self) -> ItemStore {
         let items = self.items.read().await;
         items.clone()
     } 
 
-    pub async fn set_items(&self, items: String) {
+    pub async fn set_items(&self, items: ItemStore) {
         let mut _items = self.items.write().await;
-        _items.clear();
-        _items.push_str(&items)
+        _items.extend(items);
         
     }
 

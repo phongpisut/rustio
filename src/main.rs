@@ -11,20 +11,22 @@ use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tracing::info;
 use tracing_subscriber::FmtSubscriber;
+use std::collections::HashMap;
 
-use crate::state::Message;
+use crate::state::{Message, ItemStore, Items};
 
 
 #[derive(serde::Serialize)]
 struct Messages {
     messages: Vec<state::Message>,
-    items: String,
+    items: ItemStore,
 }
 
 #[derive(serde::Serialize)]
 struct MessagesMove {
     messages: Vec<state::Message>
 }
+
 
 
 
@@ -70,12 +72,11 @@ async fn on_connect(socket: SocketRef ) {
 
     socket.on(
         "setState",
-        |socket: SocketRef, Data::<String>(data) , store: State<state::MessageStore>| async move {
-            if !data.contains("emoji@"){
-                store.set_items(data.clone()).await;
+        |socket: SocketRef, Data::<HashMap<String, Items>>(data) , store: State<state::MessageStore>| async move {
+                store.set_items(data).await;
                 let items = store.get_items().await;
                 socket.within("1").emit("consumeState", items).ok();
-            }
+            
 
         },
     );
